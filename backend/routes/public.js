@@ -90,26 +90,43 @@ router.get('/document/:slug/stream', async (req, res) => {
   }
 });
 
-// @route   POST /api/public/document/:slug/view
+// @route   POST /api/public/document/:identifier/view
 // @desc    Track document view
 // @access  Public
-router.post('/document/:slug/view', async (req, res) => {
+router.post('/document/:identifier/view', async (req, res) => {
   try {
-    console.log('Track view request for slug:', req.params.slug);
+    const { identifier } = req.params;
+    console.log('Track view request for identifier:', identifier);
     
-    // Find document by slug (check both status fields for compatibility)
-    const document = await Document.findOne({
-      publicSlug: req.params.slug,
-      $or: [
-        { status: 'active' },
-        { 'metadata.status': 'active' }
-      ]
-    });
+    let document;
+    
+    // Check if identifier is a valid MongoDB ObjectId
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(identifier) && /^[0-9a-fA-F]{24}$/.test(identifier);
+    
+    if (isValidObjectId) {
+      // Query by _id
+      document = await Document.findOne({
+        _id: identifier,
+        $or: [
+          { status: 'active' },
+          { 'metadata.status': 'active' }
+        ]
+      });
+    } else {
+      // Query by publicSlug
+      document = await Document.findOne({
+        publicSlug: identifier,
+        $or: [
+          { status: 'active' },
+          { 'metadata.status': 'active' }
+        ]
+      });
+    }
 
     console.log('Document found:', document ? `Yes (${document._id})` : 'No');
     
     if (!document) {
-      console.log('Document not found for slug:', req.params.slug);
+      console.log('Document not found for identifier:', identifier);
       return res.status(404).json({
         success: false,
         message: 'Document not found'
@@ -198,12 +215,13 @@ router.post('/document/:slug/view', async (req, res) => {
   }
 });
 
-// @route   POST /api/public/document/:slug/contact
+// @route   POST /api/public/document/:identifier/contact
 // @desc    Submit contact information
 // @access  Public
-router.post('/document/:slug/contact', async (req, res) => {
+router.post('/document/:identifier/contact', async (req, res) => {
   try {
     const { sessionId, name, mobile } = req.body;
+    const { identifier } = req.params;
 
     if (!sessionId || !name || !mobile) {
       return res.status(400).json({
@@ -212,10 +230,22 @@ router.post('/document/:slug/contact', async (req, res) => {
       });
     }
 
-    const document = await Document.findOne({
-      publicSlug: req.params.slug,
-      status: 'active'
-    });
+    let document;
+    
+    // Check if identifier is a valid MongoDB ObjectId
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(identifier) && /^[0-9a-fA-F]{24}$/.test(identifier);
+    
+    if (isValidObjectId) {
+      document = await Document.findOne({
+        _id: identifier,
+        status: 'active'
+      });
+    } else {
+      document = await Document.findOne({
+        publicSlug: identifier,
+        status: 'active'
+      });
+    }
 
     if (!document) {
       return res.status(404).json({
@@ -285,15 +315,28 @@ router.post('/document/:slug/contact', async (req, res) => {
   }
 });
 
-// @route   GET /api/public/document/:slug/download
+// @route   GET /api/public/document/:identifier/download
 // @desc    Download document files
 // @access  Public
-router.get('/document/:slug/download', async (req, res) => {
+router.get('/document/:identifier/download', async (req, res) => {
   try {
-    const document = await Document.findOne({
-      publicSlug: req.params.slug,
-      status: 'active'
-    });
+    const { identifier } = req.params;
+    let document;
+    
+    // Check if identifier is a valid MongoDB ObjectId
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(identifier) && /^[0-9a-fA-F]{24}$/.test(identifier);
+    
+    if (isValidObjectId) {
+      document = await Document.findOne({
+        _id: identifier,
+        status: 'active'
+      });
+    } else {
+      document = await Document.findOne({
+        publicSlug: identifier,
+        status: 'active'
+      });
+    }
 
     if (!document || !document.isAccessible()) {
       return res.status(404).json({
