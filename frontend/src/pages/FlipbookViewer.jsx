@@ -52,10 +52,10 @@ const FlipbookViewer = () => {
 
   const fetchDocument = async () => {
     try {
-      setLoading(true);documentIdentifier
+      setLoading(true);
       setError(null);
       
-      const response = await publicAPI.getDocument(slug);
+      const response = await publicAPI.getDocument(documentIdentifier);
       
       if (!response.error) {
         if (response.status === 'processing') {
